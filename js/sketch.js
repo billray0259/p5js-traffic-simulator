@@ -21,7 +21,7 @@ let carsPerMinute = 0;
 let timeSinceLastNormalCar = 0;
 let timeSinceLastMergerCar = 0;
 
-window.setup = function() {
+window.setup = function () {
     frameRate(40);
     createCanvas(1430, 750);
 
@@ -39,9 +39,10 @@ window.setup = function() {
 }
 
 function addCars() {
-    let acceleration = 15;
+    let acceleration = 20;
     let rotationalVelocity = 10;
     let targetSpeed = 33.5;
+    let maxJerk = 200;
 
     let mergersPerSecond = 10;
     let normalCarsPerSecond = 10;
@@ -52,7 +53,7 @@ function addCars() {
         let y = 15; // Y position for mergers
         let isCarAlreadyThere = cars.some(car => p5.Vector.dist(car.position, createVector(x, y)) < 10);
         if (!isCarAlreadyThere) {
-            let car = new Car(x, y, acceleration, rotationalVelocity, targetSpeed);
+            let car = new Car(x, y, acceleration, rotationalVelocity, targetSpeed, maxJerk);
             cars.push(car);
         }
         timeSinceLastMergerCar = 0;
@@ -64,7 +65,7 @@ function addCars() {
         let y = 0; // Y position in meters
         let isCarAlreadyThere = cars.some(car => p5.Vector.dist(car.position, createVector(x, y)) < 10);
         if (!isCarAlreadyThere) {
-            let car = new Car(x, y, acceleration, rotationalVelocity, targetSpeed);
+            let car = new Car(x, y, acceleration, rotationalVelocity, targetSpeed, maxJerk);
             cars.push(car);
         }
         timeSinceLastNormalCar = 0;
@@ -84,7 +85,7 @@ function drawHUD() {
     pop();
 }
 
-window.draw = function() {
+window.draw = function () {
     // Background color (grass)
     background(100, 150, 50);
 
@@ -101,7 +102,11 @@ window.draw = function() {
 
     // Update and draw the cars
     for (let car of cars) {
-        car.update(cars, nodes);
+        car.updateInternal(cars, nodes);
+    }
+
+    for (let car of cars) {
+        car.updateExternal();
     }
 
     // Remove finished cars and update exit statistics
@@ -136,13 +141,13 @@ window.draw = function() {
 }
 
 // Mouse drag to pan the camera (in meters)
-window.mouseDragged = function() {
+window.mouseDragged = function () {
     camX -= (movedX / camZoom) / pixelsPerMeter;
     camY -= (movedY / camZoom) / pixelsPerMeter;
 }
 
 // Mouse wheel to zoom in and out
-window.mouseWheel = function(event) {
+window.mouseWheel = function (event) {
     let zoomFactor = 1.05;
     if (event.deltaY > 0) {
         camZoom /= zoomFactor;
