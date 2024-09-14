@@ -1,27 +1,10 @@
+// js/car.js
 'use strict';
 
-let dt = 1 / 30; // Time step in seconds
-let cars = [];
-let nodes = [];
+import { pixelsPerMeter, dt } from './constants.js';
+import { angleTowards } from './utils.js';
 
-// Camera control variables
-let camX = 0;
-let camY = 0;
-let camZoom = 1;
-
-// Scaling factor: pixels per meter
-const pixelsPerMeter = 10; // 10 pixels represent 1 meter
-
-let lastCarExitFrame = 0;
-let carsPerMinute = 0;
-let timeSinceLastNormalCar = 0;
-let timeSinceLastMergerCar = 0;
-
-function angleTowards(position, target) {
-    return atan2(target.y - position.y, target.x - position.x);
-}
-
-class Car {
+export class Car {
     constructor(x, y, acceleration, rotationalVelocity, targetSpeed) {
         this.position = createVector(x, y); // Position in meters
         this.velocity = createVector(0, 0); // Velocity in meters per second
@@ -61,7 +44,7 @@ class Car {
         return boundingBox;
     }
 
-    getNextCarDistance() {
+    getNextCarDistance(cars) {
         let rayOrigin = p5.Vector.add(this.position, p5.Vector.fromAngle(this.theta).setMag(this.width / 2));
         let rayDir = p5.Vector.fromAngle(this.theta);
         let minDistance = Infinity;
@@ -116,17 +99,17 @@ class Car {
         return { intersects: true, t: t, u: u };
     }
 
-    update() {
+    update(cars, nodes) {
         if (!this.isFinished) {
-            this.updateTargetNode();
+            this.updateTargetNode(nodes);
             this.updateSteering();
-            this.updateSpeed();
+            this.updateSpeed(cars);
             this.updatePosition();
             this.checkIfFinished();
         }
     }
 
-    updateTargetNode() {
+    updateTargetNode(nodes) {
         if (this.targetNode == null) {
             // Find the closest starting node
             let closestNode = null;
@@ -156,9 +139,9 @@ class Car {
         }
     }
 
-    updateSpeed() {
+    updateSpeed(cars) {
         // Collision avoidance using getNextCarDistance()
-        let distanceToNextCar = this.getNextCarDistance();
+        let distanceToNextCar = this.getNextCarDistance(cars);
         let stopDistance = this.width * 0.5 + 1; // Stop distance in meters
         let brakingDistance = stopDistance + (this.velocity.mag() * this.velocity.mag()) / (2 * this.acceleration); // Threshold distance in meters
         let desiredSpeed = this.targetSpeed;
@@ -301,194 +284,4 @@ class Car {
             );
         }
     }
-}
-
-class RoadNode {
-    constructor(x, y) {
-        this.position = createVector(x, y); // Position in meters
-        this.next = null;
-        this.previous = null;
-        this.roadWidth = 6; // Width of the road in meters
-        this.shoulderWidth = 1; // Width of the shoulder in meters
-    }
-
-    draw() {
-        if (this.next != null) {
-            push();
-            // Calculate positions and transformations
-            let startPos = createVector(
-                this.position.x * pixelsPerMeter,
-                this.position.y * pixelsPerMeter
-            );
-            let endPos = createVector(
-                this.next.position.x * pixelsPerMeter,
-                this.next.position.y * pixelsPerMeter
-            );
-            let direction = p5.Vector.sub(endPos, startPos);
-            let angle = direction.heading();
-            let distance = direction.mag();
-
-            translate(startPos.x, startPos.y);
-            rotate(angle);
-            rectMode(CORNER);
-
-            // Draw road shoulders
-            noStroke();
-            fill(80, 80, 80); // Dark gray for shoulders
-            rect(
-                0,
-                - (this.roadWidth / 2 + this.shoulderWidth) * pixelsPerMeter,
-                distance,
-                this.shoulderWidth * pixelsPerMeter
-            );
-            rect(
-                0,
-                (this.roadWidth / 2) * pixelsPerMeter,
-                distance,
-                this.shoulderWidth * pixelsPerMeter
-            );
-
-            // Draw road surface
-            fill(50); // Darker gray for road
-            rect(
-                0,
-                -this.roadWidth * pixelsPerMeter / 2,
-                distance,
-                this.roadWidth * pixelsPerMeter
-            );
-
-            pop();
-        }
-    }
-}
-
-function setup() {
-    frameRate(40);
-    createCanvas(1430, 750);
-
-    // Create a straight road with 12 nodes
-    for (let i = 0; i < 12; i++) {
-        let x = i * 100; // X position in meters
-        let y = 0; // Y position in meters
-        let node = new RoadNode(x, y); // Positions in meters
-        nodes.push(node);
-        if (i > 0) {
-            nodes[i - 1].next = node;
-            node.previous = nodes[i - 1];
-        }
-    }
-}
-
-function addCars() {
-    let acceleration = 15;
-    let rotationalVelocity = 10;
-    let targetSpeed = 33.5;
-
-    let mergersPerSecond = 10;
-    let normalCarsPerSecond = 10;
-
-    if (timeSinceLastMergerCar >= 1 / mergersPerSecond) {
-        // Add merger car
-        let x = int(random(0, 5)) * 200; // Random x position between 0 and 800 meters
-        let y = 15; // Y position for mergers
-        let isCarAlreadyThere = cars.some(car => p5.Vector.dist(car.position, createVector(x, y)) < 10);
-        if (!isCarAlreadyThere) {
-            let car = new Car(x, y, acceleration, rotationalVelocity, targetSpeed);
-            cars.push(car);
-        }
-        timeSinceLastMergerCar = 0;
-    }
-
-    if (timeSinceLastNormalCar >= 1 / normalCarsPerSecond) {
-        // Add normal car
-        let x = nodes[0].position.x - 10; // X position 10 meters behind the first node
-        let y = 0; // Y position in meters
-        let isCarAlreadyThere = cars.some(car => p5.Vector.dist(car.position, createVector(x, y)) < 10);
-        if (!isCarAlreadyThere) {
-            let car = new Car(x, y, acceleration, rotationalVelocity, targetSpeed);
-            cars.push(car);
-        }
-        timeSinceLastNormalCar = 0;
-    }
-}
-
-function drawHUD() {
-    // Draw the camera position and zoom level
-    push();
-    fill(255);
-    noStroke();
-    text("Camera position: (" + camX.toFixed(2) + ", " + camY.toFixed(2) + ")", 10, 20);
-    text("Camera zoom: " + camZoom.toFixed(2), 10, 40);
-    text("Number of cars: " + cars.length, 10, 60);
-    text("Frame rate: ~" + (Math.round(frameRate() / 5) * 5).toFixed(0), 10, 80);
-    text("Car exit rate: " + carsPerMinute.toFixed(0) + " cars/min", 10, 100);
-    pop();
-}
-
-function draw() {
-    // Background color (grass)
-    background(100, 150, 50);
-
-    // Apply camera transformations
-    push();
-    translate(width / 2, height / 2);
-    scale(camZoom);
-    translate(-camX * pixelsPerMeter, -camY * pixelsPerMeter);
-
-    // Draw the road nodes
-    for (let node of nodes) {
-        node.draw();
-    }
-
-    // Update and draw the cars
-    for (let car of cars) {
-        car.update();
-    }
-
-    // Remove finished cars and update exit statistics
-    cars = cars.filter(car => {
-        if (car.isFinished) {
-            let carExitDifference = car.exitFrame - lastCarExitFrame;
-            lastCarExitFrame = car.exitFrame;
-            let gameSecondsBetweenCarExits = carExitDifference * dt;
-            let newCarsPerMinute = (1 / gameSecondsBetweenCarExits) * 60;
-            carsPerMinute = carsPerMinute * 0.7 + newCarsPerMinute * 0.3;
-            return false; // Remove car from array
-        }
-        return true; // Keep car in array
-    });
-
-    // Draw remaining cars
-    for (let car of cars) {
-        car.draw();
-    }
-
-    pop();
-
-    // Update time counters
-    timeSinceLastNormalCar += dt;
-    timeSinceLastMergerCar += dt;
-
-    if (cars.length < 150) {
-        addCars();
-    }
-
-    drawHUD();
-}
-
-// Mouse drag to pan the camera (in meters)
-function mouseDragged() {
-    camX -= (movedX / camZoom) / pixelsPerMeter;
-    camY -= (movedY / camZoom) / pixelsPerMeter;
-}
-
-// Mouse wheel to zoom in and out
-function mouseWheel(event) {
-    let zoomFactor = 1.05;
-    if (event.deltaY > 0) {
-        camZoom /= zoomFactor;
-    } else {
-        camZoom *= zoomFactor;
-    }
-    return false; // Prevent default scrolling behavior
 }
