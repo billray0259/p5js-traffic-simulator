@@ -100,7 +100,14 @@ The p5.js simulation should load and start running.
 
 Here are some potential enhancements that could be made to the project:
 
-- Improve car brakeing dynamic to match speed of leading car instead of maximum brakeing
+- Enable the use of configurable simulation files that save information such as
+  - Car spawning parameters
+    - Car parameters (speed, acceleration, braking distance)
+    - Spawn locations
+    - Spawning rate
+  - Road layout
+  - etc.
+- Improve car braking dynamic to match speed of leading car instead of maximum braking
 - Improve on ramps to facilitate more civilized merging
 
 ## **Dependencies**
