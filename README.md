@@ -2,6 +2,8 @@
 
 This project is a traffic simulation built using [p5.js](https://p5js.org/). The simulation creates cars that follow a straight road and dynamically avoid collisions. The cars accelerate and decelerate based on the distance to other cars, and their speed is visualized through color transitions.
 
+![](simulator_screenshot.png)
+
 ## **Features**
 
 - Cars are rendered on a canvas and follow a road represented by nodes.
