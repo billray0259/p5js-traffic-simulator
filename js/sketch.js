@@ -6,6 +6,7 @@ import { Car } from './car.js';
 import { RoadNode } from './roadnode.js';
 import { angleTowards } from './utils.js';
 import { pixelsPerMeter, dt } from './constants.js';
+import { Quadtree, Rectangle, Point } from './quadtree.js';
 
 // Global variables
 let cars = [];
@@ -20,6 +21,9 @@ let lastCarExitFrame = 0;
 let carsPerMinute = 0;
 let timeSinceLastNormalCar = 0;
 let timeSinceLastMergerCar = 0;
+
+// Declare quadtree globally
+let quadtree;
 
 window.setup = function () {
     frameRate(40);
@@ -36,6 +40,11 @@ window.setup = function () {
             node.previous = nodes[i - 1];
         }
     }
+
+    // Initialize quadtree with appropriate boundaries
+    // Assuming the canvas represents a certain area in meters
+    const boundary = new Rectangle(715, 375, 715, 375); // Center at (715, 375) with width and height
+    quadtree = new Quadtree(boundary, 4); // Capacity set to 4
 }
 
 function addCars() {
@@ -100,9 +109,20 @@ window.draw = function () {
         node.draw();
     }
 
-    // Update and draw the cars
+    // Clear and rebuild quadtree each frame
+    quadtree.clear();
     for (let car of cars) {
-        car.updateInternal(cars, nodes);
+        let point = new Point(car.position.x, car.position.y, car);
+        quadtree.insert(point);
+    }
+
+    // Update and draw the cars using nearby cars from quadtree
+    for (let car of cars) {
+        // Define the query range (e.g., 100 meters around the car)
+        const range = new Rectangle(car.position.x, car.position.y, 100, 100);
+        const nearbyPoints = quadtree.query(range);
+        const nearbyCars = nearbyPoints.map(p => p.userData);
+        car.updateInternal(nearbyCars, nodes);
     }
 
     for (let car of cars) {
